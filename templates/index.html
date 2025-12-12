@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>AI-Study 얼굴 퀴즈</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif; background:#111827 ; color:#e5e7eb; }
+    .wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; }
+    .card { background:#1f2937 ; padding:32px 28px; border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,0.6); max-width:420px; width:100%; text-align:center; }
+    h1 { font-size:24px; margin-bottom:6px; }
+    p.sub { font-size:13px; color:#9ca3af; margin-bottom:20px; }
+    .count { font-size:13px; color:#a5b4fc; margin-bottom:16px; }
+    .btn-main { display:block; width:100%; padding:12px 0; border-radius:999px; border:none; background:linear-gradient(135deg,#4f46e5,#22c55e); color:white; font-weight:700; font-size:15px; cursor:pointer; margin-bottom:10px; }
+    .btn-sub { display:block; width:100%; padding:10px 0; border-radius:999px; border:1px solid #4b5563; background:transparent; color:#e5e7eb; font-size:13px; cursor:pointer; margin-top:4px; text-decoration:none; }
+    .links { margin-top:10px; font-size:12px; color:#6b7280; }
+    .links a { color:#a5b4fc; text-decoration:none; margin:0 4px; }
+    .name-label { font-size:13px; color:#9ca3af; margin-bottom:6px; text-align:left; }
+    .name-input { width:100%; padding:9px 11px; border-radius:8px; border:1px solid #4b5563; background:#1f2937 ; color:#e5e7eb; font-size:14px; margin-bottom:12px; }
+    .hint { font-size:11px; color:#4b5563; margin-bottom:12px; text-align:left; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Oracle Bootcamp 2기 얼굴 퀴즈</h1>
+      <p class="sub">동기의 얼굴만 보고 이름을 맞춰보는 게임</p>
+
+      <p class="count">
+        현재 등록된 멤버: <strong>{{ member_count }}</strong>명
+      </p>
+
+      <!-- 기존 퀴즈 시작 부분을 아래로 교체 -->
+{% if member_count >= 20 %}
+<div style="margin-bottom:16px; text-align:left;">
+  <div class="name-label">퀴즈에 표시될 내 이름</div>
+  <select id="username-select" class="name-input">
+    <option value="">이름을 선택하세요</option>
+  </select>
+  <div class="hint">리더보드에 표시할 이름이에요. 선택 안 하면 '익명'으로 저장돼요.</div>
+</div>
+<button class="btn-main" type="button" id="start-btn">퀴즈 시작하기</button>
+{% else %}
+<div class="quiz-locked">
+  <div style="font-size:16px; color:#fbbf24; margin-bottom:12px;">
+    🔒 퀴즈 준비 중
+  </div>
+  <p style="font-size:13px; color:#9ca3af; margin-bottom:16px;">
+    <strong>{{ member_count }}</strong>/20명 등록됨<br>
+    20명 등록 후 퀴즈가 오픈됩니다!
+  </p>
+  <div style="text-align:center;">
+    <a href="/upload" class="btn-main" style="display:inline-block; padding-left:24px; padding-right:24px;">
+      지금 멤버 등록하기 →
+    </a>
+  </div>
+</div>
+{% endif %}
+
+
+      <div class="links">
+        <a href="/leaderboard">리더보드 보기</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // AI_STUDY_NAMES 배열 (base.html에 정의되어 있어야 함)
+    const AI_STUDY_NAMES = [
+      "강다연","고민정","구본욱","권민정","김수정","김연석","김윤재","김하영",
+      "마찬호","문예진","민수현","박소연","배성경","배순은","백진욱","신수빈",
+      "오제호","윤지우","이소연","이재성","이주영","이하경","정다윤","지효은",
+      "최예지","최은용","한희승","홍유림","류선정","이혜인","이세림","강희준",
+      "구윤정","김선경","김예지","김하경","노주영","박소현","박채린","윤성규",
+      "이수림","이승민","이시은","이재용","정기헌","진정아","한수빈","한정재","황성민"
+    ];
+
+    const select = document.getElementById('username-select');
+    const btn = document.getElementById('start-btn');
+
+    // 옵션 채우기
+    AI_STUDY_NAMES.forEach(n => {
+      const opt = document.createElement('option');
+      opt.value = n;
+      opt.textContent = n;
+      select.appendChild(opt);
+    });
+
+    // 저장된 이름이 있으면 자동 선택
+    const saved = localStorage.getItem('ai_study_username');
+    if (saved && AI_STUDY_NAMES.includes(saved)) {
+      select.value = saved;
+    }
+
+    btn.addEventListener('click', () => {
+      const name = select.value.trim();
+      if (name) {
+        localStorage.setItem('ai_study_username', name);
+      } else {
+        localStorage.removeItem('ai_study_username');
+      }
+      window.location.href = '/quiz';
+    });
+  </script>
+</body>
+</html>

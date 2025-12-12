@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}순위표{% endblock %}
+
+{% block extra_css %}
+<style>
+  h1 { font-size: 26px; margin-bottom: 8px; text-align: center; }
+  .subtitle { text-align: center; font-size: 14px; color: #9ca3af; margin-bottom: 24px; }
+  .leaderboard-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .leaderboard-table thead {
+    background: #1e293b;
+  }
+  .leaderboard-table th {
+    padding: 12px 10px;
+    text-align: left;
+    font-size: 13px;
+    color: #a5b4fc;
+    font-weight: 600;
+  }
+  .leaderboard-table td {
+    padding: 12px 10px;
+    border-bottom: 1px solid #1e293b;
+    font-size: 14px;
+  }
+  .leaderboard-table tbody tr:hover {
+    background: #1e293b;
+  }
+  .rank {
+    font-weight: 700;
+    color: #fbbf24;
+  }
+  .empty {
+    text-align: center;
+    padding: 32px;
+    color: #9ca3af;
+    font-size: 14px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <h1>🏆 리더보드</h1>
+  <p class="subtitle">최고 점수를 기록한 참가자들</p>
+
+  {% if scores %}
+    <table class="leaderboard-table">
+      <thead>
+        <tr>
+          <th>순위</th>
+          <th>이름</th>
+          <th>맞춘 수</th>
+          <th>정확도</th>
+          <th>날짜</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for score in scores %}
+        <tr>
+          <td class="rank">#{{ loop.index }}</td>
+          <td>{{ score.user_name }}</td>
+          <td>{{ score.score }} / {{ score.total_questions }}</td>
+          <td>{{ score.accuracy }}%</td>
+          <td>{{ score.played_at[:10] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <div class="empty">아직 기록이 없습니다. 첫 번째 도전자가 되어보세요!</div>
+  {% endif %}
+
+  <div style="text-align:center; margin-top:20px;">
+    <a href="/quiz" class="btn-primary" style="text-decoration:none;">퀴즈 다시 하기</a>
+  </div>
+</div>
+{% endblock %}

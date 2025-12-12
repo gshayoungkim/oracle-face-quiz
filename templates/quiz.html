@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+{% block title %}퀴즈{% endblock %}
+
+{% block extra_css %}
+<style>
+  .quiz-wrap { text-align: center; }
+  h1 { font-size: 26px; margin-bottom: 8px; }
+  .subtitle { font-size: 14px; color: #9ca3af; margin-bottom: 24px; }
+  .error { color: #f87171; font-size: 14px; margin-top: 12px; }
+  .quiz-box {
+    background: #020617;
+    border-radius: 18px;
+    padding: 32px;
+    margin-bottom: 20px;
+  }
+  .face-img {
+    width: 200px;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  .options {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    margin-top: 16px;
+  }
+  .option-btn {
+    padding: 12px;
+    border-radius: 12px;
+    border: 2px solid #374151;
+    background: #1e293b;
+    color: #e5e7eb;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .option-btn:hover {
+    border-color: #4f46e5;
+    background: #312e81;
+  }
+  .option-btn.correct {
+    border-color: #22c55e;
+    background: #065f46;
+  }
+  .option-btn.wrong {
+    border-color: #ef4444;
+    background: #7f1d1d;
+  }
+  .progress {
+    font-size: 13px;
+    color: #a5b4fc;
+    margin-bottom: 12px;
+  }
+  .score-display {
+    font-size: 15px;
+    color: #fbbf24;
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+  .result-box {
+    margin-top: 24px;
+    padding: 24px;
+    background: #1e293b;
+    border-radius: 16px;
+  }
+  .result-box h2 {
+    font-size: 22px;
+    margin-bottom: 8px;
+    color: #22c55e;
+  }
+  .result-box p {
+    font-size: 14px;
+    color: #9ca3af;
+    margin-bottom: 16px;
+  }
+  #username-input {
+    width: 100%;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid #4b5563;
+    background: #0f172a;
+    color: #e5e7eb;
+    font-size: 14px;
+    margin-bottom: 12px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="quiz-wrap">
+  {% if error %}
+    <div class="card">
+      <h1>❌ 오류</h1>
+      <p class="error">{{ error }}</p>
+      <a href="/upload" class="btn-primary" style="margin-top:16px; display:inline-block; text-decoration:none;">멤버 등록하러 가기</a>
+    </div>
+  {% else %}
+    <div class="card">
+      <h1>🎯 얼굴 퀴즈</h1>
+      <p class="subtitle">사진 속 인물의 이름을 맞춰보세요!</p>
+
+      <div id="quiz-container">
+        <div class="progress" id="progress">문제 1 / {{ members|length }}</div>
+        <div class="score-display" id="score-display">점수: 0 / {{ members|length }}</div>
+
+        <div class="quiz-box">
+          <img id="face-img" class="face-img" src="" alt="얼굴">
+          <div class="options" id="options"></div>
+        </div>
+      </div>
+
+      <div id="result-box" class="result-box" style="display:none;">
+  <h2>🎉 퀴즈 완료!</h2>
+  <p id="final-score"></p>
+
+  <label for="username-select-result" style="font-size:13px; color:#9ca3af; display:block; text-align:left; margin-bottom:4px;">
+    리더보드에 표시할 이름
+  </label>
+  <select id="username-select-result" style="width:100%; padding:9px 11px; border-radius:8px; border:1px solid #4b5563; background:#0f172a; color:#e5e7eb; font-size:14px; margin-bottom:12px;">
+    <option value="">이름을 선택하세요 (선택 안 하면 익명)</option>
+  </select>
+
+  <button class="btn-primary" id="save-btn" style="width:100%; margin-bottom:8px;">점수 저장하기</button>
+  <a href="/quiz" class="btn-secondary" style="width:100%; text-align:center; display:block; margin-top:8px;">다시 도전</a>
+</div>
+
+    </div>
+  {% endif %}
+</div>
+
+{% if not error %}
+<script>
+  const members = {{ members | tojson }};
+  let currentIndex = 0;
+  let score = 0;
+
+  function shuffle(arr) {
+    return arr.sort(() => Math.random() - 0.5);
+  }
+
+    function renderQuestion() {
+  if (currentIndex >= members.length) {
+    showResult();
+    return;
+  }
+
+  const current = members[currentIndex];
+  document.getElementById('progress').textContent = `문제 ${currentIndex + 1} / ${members.length}`;
+  document.getElementById('score-display').textContent = `점수: ${score} / ${members.length}`;
+  document.getElementById('face-img').src = current.image_url;
+
+  const allNames = members.map(m => m.name);
+  const otherNames = allNames.filter(n => n !== current.name);
+  shuffle(otherNames);
+
+  // 실제 사용할 보기 수: 멤버 수가 4명 미만이면 그만큼만
+  const optionCount = Math.min(4, 1 + otherNames.length);
+  const choices = shuffle([current.name, ...otherNames.slice(0, optionCount - 1)]);
+
+  const optionsDiv = document.getElementById('options');
+  optionsDiv.innerHTML = '';
+  choices.forEach(name => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.textContent = name;
+    btn.onclick = () => checkAnswer(name, current.name, btn);
+    optionsDiv.appendChild(btn);
+  });
+}
+
+
+  function checkAnswer(selected, correct, btn) {
+    const btns = document.querySelectorAll('.option-btn');
+    btns.forEach(b => b.disabled = true);
+
+    if (selected === correct) {
+      btn.classList.add('correct');
+      score++;
+    } else {
+      btn.classList.add('wrong');
+      btns.forEach(b => {
+        if (b.textContent === correct) b.classList.add('correct');
+      });
+    }
+
+    setTimeout(() => {
+      currentIndex++;
+      renderQuestion();
+    }, 1200);
+  }
+
+  function showResult() {
+    document.getElementById('quiz-container').style.display = 'none';
+    document.getElementById('result-box').style.display = 'block';
+    const accuracy = ((score / members.length) * 100).toFixed(1);
+    document.getElementById('final-score').textContent =
+      `${score} / ${members.length} (정확도: ${accuracy}%)`;
+
+    // 드롭다운 채우기
+    const sel = document.getElementById('username-select-result');
+    sel.innerHTML = '<option value="">이름을 선택하세요 (선택 안 하면 익명)</option>';
+    AI_STUDY_NAMES.forEach(n => {
+      const opt = document.createElement('option');
+      opt.value = n;
+      opt.textContent = n;
+      sel.appendChild(opt);
+    });
+
+    // localStorage에 저장된 이름이 있으면 선택
+    const saved = localStorage.getItem('ai_study_username');
+    if (saved && AI_STUDY_NAMES.includes(saved)) {
+      sel.value = saved;
+    }
+  }
+
+  document.getElementById('save-btn').addEventListener('click', async () => {
+    const sel = document.getElementById('username-select-result');
+    let username = sel.value.trim() || '익명';
+
+    if (username !== '익명') {
+      localStorage.setItem('ai_study_username', username);
+    } else {
+      localStorage.removeItem('ai_study_username');
+    }
+
+    try {
+      await fetch('/api/quiz_submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_name: username,
+          score: score,
+          total: members.length
+        })
+      });
+      alert('점수가 저장되었습니다!');
+      window.location.href = '/leaderboard';
+    } catch (err) {
+      alert('점수 저장 실패');
+    }
+  });
+
+  renderQuestion();
+</script>
+{% endif %}
+{% endblock %}

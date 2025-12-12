@@ -1,0 +1,40 @@
+body {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+.card {
+    border-radius: 20px;
+}
+
+.option-btn {
+    transition: all 0.3s ease;
+    border-radius: 15px;
+    font-size: 1.2rem;
+    height: 120px;
+}
+
+.option-btn:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.option-btn:disabled.btn-success {
+    background-color: #28a745 !important;
+    border-color: #28a745 !important;
+}
+
+.option-btn:disabled.btn-danger {
+    background-color: #dc3545 !important;
+    border-color: #dc3545 !important;
+}
+
+.navbar-brand i {
+    animation: bounce 2s infinite;
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-10px); }
+    60% { transform: translateY(-5px); }
+}

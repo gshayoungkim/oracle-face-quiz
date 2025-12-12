@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <title>{% block title %}Oracle Bootcamp 2기 얼굴 퀴즈{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #111827 ;
+      color: #e5e7eb;
+      min-height: 100vh;
+    }
+    .nav {
+      background: #1f2937;
+      padding: 12px 20px;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .nav-brand {
+      font-size: 16px;
+      font-weight: 700;
+      color: #a5b4fc;
+      text-decoration: none;
+    }
+    .nav-links a {
+      color: #9ca3af;
+      text-decoration: none;
+      font-size: 13px;
+      margin-left: 14px;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover {
+      color: #22c55e;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 32px 20px;
+    }
+    .card {
+      background: #1f2937;
+      border-radius: 18px;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+      padding: 28px;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #4f46e5, #22c55e);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .btn-primary:hover {
+      transform: scale(1.02);
+    }
+    .btn-secondary {
+      background: transparent;
+      color: #e5e7eb;
+      border: 1px solid #4b5563;
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    .btn-secondary:hover {
+      border-color: #22c55e;
+      color: #22c55e;
+    }
+  </style>
+  {% block extra_css %}{% endblock %}
+</head>
+<script>
+  const AI_STUDY_NAMES = [
+    "강다연","고민정","구본욱","권민정","김수정","김연석","김윤재","김하영",
+    "마찬호","문예진","민수현","박소연","배성경","배순은","백진욱","신수빈",
+    "오제호","윤지우","이소연","이재성","이주영","이하경","정다윤","지효은",
+    "최예지","최은용","한희승","홍유림","류선정","이혜인","이세림","강희준",
+    "구윤정","김선경","김예지","김하경","노주영","박소현","박채린","윤성규",
+    "이수림","이승민","이시은","이재용","정기헌","진정아","한수빈","한정재","황성민"
+  ];
+</script>
+<body>
+  <nav class="nav">
+    <a href="/" class="nav-brand">Oracle Bootcamp 2기 퀴즈</a>
+    <div class="nav-links">
+      <a href="/">홈</a>
+      <a href="/quiz">퀴즈 시작</a>
+      <a href="/upload">멤버 등록</a>
+      <a href="/leaderboard">순위표</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    {% block content %}{% endblock %}
+  </div>
+
+  {% block extra_js %}{% endblock %}
+</body>
+</html>
