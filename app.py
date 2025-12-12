@@ -25,6 +25,10 @@ supabase = create_client(supabase_url, supabase_key)
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
+BUCKET_NAME = "face-images"
+FOLDER_NAME = "members"
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -107,35 +111,44 @@ def upload_member():
 
         name = request.form['name'].strip()
         photo_file = request.files['photo']
-        
+
+        # 1) 이름 필수
+        if not name:
+            return jsonify({'success': False, 'error': '이름을 선택해주세요.'}), 400
+
+        # 2) 파일 검증
         if not photo_file.filename or not allowed_file(photo_file.filename):
             return jsonify({'success': False, 'error': '올바른 사진 파일을 선택해주세요.'}), 400
 
-        # 파일명 안전 처리
-        filename = secure_filename(photo_file.filename)
-        name_slug = secure_filename(name.replace(' ', '_'))
-        ext = os.path.splitext(filename)[1] or '.jpg'
-        unique_filename = f"{name_slug}_{int(datetime.now().timestamp())}{ext}"
+        # 3) 파일명 생성 (Storage 경로용)
+        orig_filename = secure_filename(photo_file.filename)
+        name_slug = secure_filename(name.replace(' ', '_')) or 'member'
+        ext = os.path.splitext(orig_filename)[1] or '.jpg'
+        filename = f"{name_slug}_{int(datetime.now().timestamp())}{ext}"
 
-        # ★ stream seek 제거 - 워터마크 함수에서 처리
+        # Storage 경로: members/파일명
+        storage_path = f"{FOLDER_NAME}/{filename}"
+
+        # 4) 워터마크 적용 (메모리 바이트로)
         watermarked_bytes = add_watermark(photo_file, text="ORACLE-BOOTCAMP")
+        file_data = watermarked_bytes.getvalue()
 
-        # static/uploads 디렉토리 생성
-        upload_dir = 'static/uploads'
-        os.makedirs(upload_dir, exist_ok=True)
-        file_path = os.path.join(upload_dir, unique_filename)
+        # 5) Supabase Storage 업로드
+        supabase.storage.from_(BUCKET_NAME).upload(
+            path=storage_path,
+            file=file_data,
+            file_options={"content-type": "image/jpeg"}
+        )
 
-        # 파일 저장
-        with open(file_path, 'wb') as f:
-            f.write(watermarked_bytes.read())
+        # 6) Public URL 얻기
+        public_url = supabase.storage.from_(BUCKET_NAME).get_public_url(storage_path)
 
-        # Supabase에 저장 ★ 실제 저장 로직 추가
+        # 7) members 테이블에 저장
         member_data = {
             'name': name,
-            'image_url': f'/static/uploads/{unique_filename}',
+            'image_url': public_url,               # 이제 /static/... 이 아니라 전체 URL
             'bio': request.form.get('bio', '').strip()
         }
-        
         supabase.table('members').insert(member_data).execute()
 
         return jsonify({
@@ -147,7 +160,6 @@ def upload_member():
     except Exception as e:
         print(f"업로드 에러: {str(e)}")
         return jsonify({'success': False, 'error': f'업로드 실패: {str(e)}'}), 500
-
 # 나머지 라우트들은 동일...
 @app.route('/api/quiz_submit', methods=['POST'])
 def quiz_submit():
