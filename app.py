@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Blueprint, Flask, render_template, request, jsonify, redirect, url_for
 from supabase import create_client
 import os
 from dotenv import load_dotenv
@@ -6,6 +6,8 @@ import random
 import uuid
 from werkzeug.utils import secure_filename
 from datetime import datetime
+from PIL import Image, ImageDraw, ImageFont
+import io
 
 # 환경변수 로드
 load_dotenv()
@@ -25,6 +27,46 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# 워터마크 함수 (맨 위로 이동)
+def add_watermark(file_storage, text="ORACLE-BOOTCAMP", angle=20):
+    img = Image.open(file_storage.stream).convert("RGBA")
+    width, height = img.size
+
+    watermark_layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
+    draw = ImageDraw.Draw(watermark_layer)
+
+    try:
+        font = ImageFont.truetype("arial.ttf", int(width * 0.025))
+    except:
+        font = ImageFont.load_default()
+
+    bbox = draw.textbbox((0, 0), text, font=font)
+    text_w = bbox[2] - bbox[0]
+    text_h = bbox[3] - bbox[1]
+
+    txt_img = Image.new("RGBA", (text_w + 20, text_h + 20), (0, 0, 0, 0))
+    txt_draw = ImageDraw.Draw(txt_img)
+    txt_draw.text((10, 10), text, font=font, fill=(255, 255, 255, 80))
+
+    rotated_txt = txt_img.rotate(angle, expand=True, resample=Image.BICUBIC)
+
+    rot_w, rot_h = rotated_txt.size
+    x_gap = int(rot_w * 0.8)
+    y_gap = int(rot_h * 1.6)
+
+    for x in range(-rot_w, width + rot_w, x_gap):
+        for y in range(-rot_h, height + rot_h, y_gap):
+            watermark_layer.alpha_composite(rotated_txt, (x, y))
+
+    watermarked = Image.alpha_composite(img, watermark_layer)
+
+    output = io.BytesIO()
+    ext = (file_storage.filename.rsplit(".", 1)[-1] or "png").lower()
+    fmt = "PNG" if ext == "png" else "JPEG"
+    watermarked.convert("RGB").save(output, format=fmt, quality=90)
+    output.seek(0)
+    return output
 
 @app.route('/')
 def index():
@@ -56,53 +98,57 @@ def quiz():
 def upload_page():
     return render_template('upload.html')
 
+# ★ 수정된 API 라우트 (Supabase 저장 추가)
 @app.route('/api/upload_member', methods=['POST'])
 def upload_member():
     try:
-        # 입력 검증
-        name = request.form.get('name', '').strip()
-        if not name:
-            return jsonify({'error': '이름을 입력해주세요'}), 400
+        if 'photo' not in request.files or 'name' not in request.form:
+            return jsonify({'success': False, 'error': '이름과 사진이 필요합니다.'}), 400
+
+        name = request.form['name'].strip()
+        photo_file = request.files['photo']
         
-        file = request.files.get('photo')
-        if not file or file.filename == '':
-            return jsonify({'error': '사진을 선택해주세요'}), 400
-        
-        if not allowed_file(file.filename):
-            return jsonify({'error': 'JPG, PNG, GIF만 가능합니다'}), 400
-        
-        bio = request.form.get('bio', '').strip()
-        
-        # 고유 파일명 생성
-        file_ext = os.path.splitext(file.filename)[1]
-        unique_filename = f"members/{uuid.uuid4().hex}{file_ext}"
-        
-        # Supabase Storage 업로드
-        file.seek(0)
-        supabase.storage.from_('face-images').upload(unique_filename, file.read())
-        
-        # Public URL 생성
-        image_url = supabase.storage.from_('face-images').get_public_url(unique_filename)
-        
-        # DB 저장
-        data = {
+        if not photo_file.filename or not allowed_file(photo_file.filename):
+            return jsonify({'success': False, 'error': '올바른 사진 파일을 선택해주세요.'}), 400
+
+        # 파일명 안전 처리
+        filename = secure_filename(photo_file.filename)
+        name_slug = secure_filename(name.replace(' ', '_'))
+        ext = os.path.splitext(filename)[1] or '.jpg'
+        unique_filename = f"{name_slug}_{int(datetime.now().timestamp())}{ext}"
+
+        # ★ stream seek 제거 - 워터마크 함수에서 처리
+        watermarked_bytes = add_watermark(photo_file, text="ORACLE-BOOTCAMP")
+
+        # static/uploads 디렉토리 생성
+        upload_dir = 'static/uploads'
+        os.makedirs(upload_dir, exist_ok=True)
+        file_path = os.path.join(upload_dir, unique_filename)
+
+        # 파일 저장
+        with open(file_path, 'wb') as f:
+            f.write(watermarked_bytes.read())
+
+        # Supabase에 저장 ★ 실제 저장 로직 추가
+        member_data = {
             'name': name,
-            'image_url': image_url,
-            'bio': bio or None
+            'image_url': f'/static/uploads/{unique_filename}',
+            'bio': request.form.get('bio', '').strip()
         }
         
-        result = supabase.table('members').insert(data).execute()
-        
+        supabase.table('members').insert(member_data).execute()
+
         return jsonify({
             'success': True,
-            'message': f'🎉 {name} 멤버 등록 완료!',
-            'member': result.data[0]
+            'message': f'{name} 멤버 등록 완료!',
+            'member': member_data
         })
-        
-    except Exception as e:
-        print(f"Upload error: {e}")
-        return jsonify({'error': f'업로드 실패: {str(e)}'}), 500
 
+    except Exception as e:
+        print(f"업로드 에러: {str(e)}")
+        return jsonify({'success': False, 'error': f'업로드 실패: {str(e)}'}), 500
+
+# 나머지 라우트들은 동일...
 @app.route('/api/quiz_submit', methods=['POST'])
 def quiz_submit():
     try:
@@ -116,7 +162,6 @@ def quiz_submit():
             'score': score,
             'total_questions': total,
             'accuracy': round((score/total)*100, 1) if total > 0 else 0,
-            # 1) 문자열로 변환해서 넣기 (ISO8601)
             'played_at': datetime.utcnow().isoformat()
         }
 
@@ -152,7 +197,6 @@ def get_members():
 if __name__ == '__main__':
     print("🚀 Oracle Bootcamp 2기 얼굴 퀴즈 - Supabase 연결!")
     
-    # 연결 테스트
     try:
         response = supabase.table('members').select('count', count='exact').execute()
         print(f"✅ Supabase 연결 성공! (멤버 수: {response.count})")
